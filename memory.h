@@ -45,3 +45,9 @@ struct mem_controller_tag {
 mem_controller mem_create_controller();
 
 void *mem_malloc_func(mem_controller controller, char *filename, int line, size_t size);
+
+void *mem_realloc_func(mem_controller controller, char *filename, int line, void *ptr, size_t size);
+
+char *mem_strdup_func(mem_controller controller, char *filename, int line, char *str);
+
+void mem_free_func(mem_controller controller, void *ptr);
