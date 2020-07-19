@@ -49,8 +49,23 @@ void* mem_malloc_func(mem_controller controller, char *filename, int line, size_
     void        *ptr;
     size_t      alloc_size;
 
+#ifdef DEBUG
+    alloc_size = size + sizeof(Header) + MARK_SIZE;
+#else
     alloc_size = size;
+#endif
     ptr = malloc(alloc_size);
+    if (ptr == NULL) {
+        error_handler(controller, filename, line, "malloc");
+    }
+
+#ifdef DEBUG
+    memset(ptr, 0xCC, alloc_size);
+    set_header(ptr, size, filename, line);
+    set_tail(ptr, alloc_size);
+    chain_block(controller, (Header*)ptr);
+    ptr = (char*)ptr + sizeof(Header);
+#endif
 
     return ptr;
 }
@@ -60,9 +75,52 @@ void* mem_realloc_func(mem_controller controller, char *filename, int line, void
     size_t      alloc_size;
     void        *real_ptr;
 
+#ifdef DEBUG
+    Header      old_header;
+    int         old_size;
+
+    alloc_size = size + sizeof(Header) + MARK_SIZE;
+    if (ptr != NULL) {
+        real_ptr = (char*)ptr - sizeof(Header);
+        check_mark((Header*)real_ptr);
+        old_header = *((Header*)real_ptr);
+        old_size = old_header.s.size;
+        unchain_block(controller, real_ptr);
+    } else {
+        real_ptr = NULL;
+        old_size = 0;
+    }
+#else
     alloc_size = size;
     real_ptr = ptr;
+#endif
+
     new_ptr = realloc(real_ptr, alloc_size);
+    if (new_ptr == NULL) {
+        if (ptr == NULL) {
+            error_handler(controller, filename, line, "realloc(malloc)");
+        } else {
+            error_handler(controller, filename, line, "realloc");
+            free(real_ptr);
+        }
+    }
+
+#ifdef DEBUG
+    if (ptr) {
+        *((Header*)new_ptr) = old_header;
+        ((Header*)new_ptr)->s.size = size;
+        rechain_block(controller, (Header*)new_ptr);
+        set_tail(new_ptr, alloc_size);
+    } else {
+        set_header(new_ptr, size, filename, line);
+        set_tail(new_ptr, alloc_size);
+        chain_block(controller, (Header*)new_ptr);
+   }
+    new_ptr = (char*)new_ptr + sizeof(Header);
+    if (size > old_size) {
+        memset((char*)new_ptr + old_size, 0xCC, size - old_size);
+    }
+#endif
 
     return new_ptr;
 }
@@ -73,7 +131,23 @@ char *mem_strdup_func(mem_controller controller, char *filename, int line, char 
     size_t      alloc_size;
 
     size = strlen(str) + 1;
+    #ifdef DEBUG
+    alloc_size = size + sizeof(Header) + MARK_SIZE;
+#else
+    alloc_size = size;
+#endif
     ptr = malloc(alloc_size);
+    if (ptr == NULL) {
+        error_handler(controller, filename, line, "strdup");
+    }
+
+#ifdef DEBUG
+    memset(ptr, 0xCC, alloc_size);
+    set_header((Header*)ptr, size, filename, line);
+    set_tail(ptr, alloc_size);
+    chain_block(controller, (Header*)ptr);
+    ptr = (char*)ptr + sizeof(Header);
+#endif
     strcpy(ptr, str);
 
     return ptr;
@@ -82,7 +156,21 @@ char *mem_strdup_func(mem_controller controller, char *filename, int line, char 
 void mem_free_func(mem_controller controller, void *ptr) {
     void        *real_ptr;
 
+#ifdef DEBUG
+    int size;
+#endif
+    if (ptr == NULL)
+        return;
+
+#ifdef DEBUG
+    real_ptr = (char*)ptr - sizeof(Header);
+    check_mark((Header*)real_ptr);
+    size = ((Header*)real_ptr)->s.size;
+    unchain_block(controller, real_ptr);
+    memset(real_ptr, 0xCC, size + sizeof(Header));
+#else
     real_ptr = ptr;
+#endif
 
     free(real_ptr);
 }
