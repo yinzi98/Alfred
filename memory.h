@@ -4,6 +4,7 @@
 
 typedef union Header_tag Header;
 typedef struct mem_controller_tag *mem_controller;
+typedef void (*MEM_ErrorHandler)(mem_controller, char *, int, char *);
 
 typedef union {
     long    l_dummy;
@@ -38,9 +39,15 @@ typedef enum {
 } MEM_Failmode;
 
 struct mem_controller_tag {
+    FILE        *error_fp;
+    MEM_ErrorHandler    error_handler;
     MEM_Failmode        fail_mode;
     Header      *block_header;
 };
+
+static void error_handler(mem_controller controller, char *filename, int line, char *msg);
+
+static void default_error_handler(mem_controller controller, char *filename, int line, char *msg);
 
 mem_controller mem_create_controller();
 

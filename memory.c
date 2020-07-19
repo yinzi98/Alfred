@@ -4,22 +4,36 @@
 
 #include "memory.h"
 
+#ifdef DEBUG
+#include "inspection.h"
+#endif /* DEBUG */
+
+ /* error handler */
+static void error_handler(mem_controller controller, char *filename, int line, char *msg) {
+    if (controller->error_fp == NULL) {
+        controller->error_fp = stderr;
+    }
+    controller->error_handler(controller, filename, line, msg);
+
+    if (controller->fail_mode == MEM_FAIL_AND_EXIT) {
+        exit(1);
+    }
+}
+
+static void default_error_handler(mem_controller controller, char *filename, 
+                                    int line, char *msg) {
+    fprintf(controller->error_fp,
+            "MEM:%s failed in %s at %d\n", msg, filename, line);
+}
+
+/* init controller */
 static struct mem_controller_tag st_default_controller = {
-    // NULL,/* stderr */
+    NULL,/* stderr */
+    default_error_handler,
     MEM_FAIL_AND_EXIT
 };
 
 mem_controller mem_default_controller = &st_default_controller;
-
-void* mem_malloc_func(mem_controller controller, char *filename, int line, size_t size){
-    void        *ptr;
-    size_t      alloc_size;
-
-    alloc_size = size;
-    ptr = malloc(alloc_size);
-
-    return ptr;
-}
 
 mem_controller mem_create_controller() {
     mem_controller    p;
@@ -28,6 +42,17 @@ mem_controller mem_create_controller() {
     *p = st_default_controller;
 
     return p;
+}
+
+/* functions of MEM module. */
+void* mem_malloc_func(mem_controller controller, char *filename, int line, size_t size) {
+    void        *ptr;
+    size_t      alloc_size;
+
+    alloc_size = size;
+    ptr = malloc(alloc_size);
+
+    return ptr;
 }
 
 void* mem_realloc_func(mem_controller controller, char *filename, int line, void *ptr, size_t size) {
@@ -60,4 +85,11 @@ void mem_free_func(mem_controller controller, void *ptr) {
     real_ptr = ptr;
 
     free(real_ptr);
+}
+
+int main() {
+    #ifdef DEBUG
+    printf("DEBUG\n");
+    #endif /* DEBUG */
+    return 0;
 }
