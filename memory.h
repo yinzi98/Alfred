@@ -3,6 +3,7 @@
 #include <stdlib.h>
 
 typedef union Header_tag Header;
+typedef struct mem_storage_tag *mem_storage;
 typedef struct mem_controller_tag *mem_controller;
 typedef void (*MEM_ErrorHandler)(mem_controller, char *, int, char *);
 
